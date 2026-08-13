@@ -2094,7 +2094,7 @@ bool PRINTER_isInited() {
 
 void PRINTER_Init(Section* sec) 
 {
-	Section_prop * section=static_cast<Section_prop *>(sec);
+	SectionProp * section=static_cast<SectionProp *>(sec);
 	section->AddDestroyFunction(&PRINTER_Shutdown);
 
 	// Set base address of LPT1 in the BIOS variable segment

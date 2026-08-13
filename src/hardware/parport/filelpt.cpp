@@ -23,7 +23,7 @@
 #include "filelpt.h"
 #include "callback.h"
 #include "pic.h"
-#include "hardware.h" //OpenCaptureFile
+#include <cstdio> // fopen (was hardware.h/OpenCaptureFile)
 #include <stdio.h>
 
 #include "printer_charmaps.h"
@@ -96,7 +96,7 @@ bool CFileLPT::OpenFile() {
 		file = fopen(name.c_str(),"wb");
 		break;
 	case FILE_CAPTURE:
-		file = OpenCaptureFile("Parallel Port Stream",".prt");
+		file = fopen("parallel_port_stream.prt","wb");
 		break;
 	case FILE_APPEND:
 		file = fopen(name.c_str(),"ab");

@@ -40,7 +40,7 @@ public:
 	bool Read(uint8_t * data,uint16_t * size);
 	bool Write(uint8_t * data,uint16_t * size);
 	bool Seek(uint32_t * pos,uint32_t type);
-	bool Close();
+	void Close();
 	uint16_t GetInformation(void);
 private:
 	CParallel* pportclass;

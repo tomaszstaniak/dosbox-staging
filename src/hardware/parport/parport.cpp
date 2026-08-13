@@ -27,7 +27,9 @@
 #include "setup.h"
 #include "hardware/timer.h"
 #include "bios.h"					// SetLPTPort(..)
-#include "hardware.h"				// OpenCaptureFile
+#include <cstdio>
+#include <memory>
+#include <cassert>				// fopen (was hardware.h/OpenCaptureFile)
 
 #include "parport.h"
 #include "directlpt_win32.h"
@@ -35,6 +37,27 @@
 #include "printer_redir.h"
 #include "filelpt.h"
 #include "dos/dos.h"
+
+//--Added 2026-08-13: BIOS_SetLPTPort was removed from ints/bios.cpp upstream.
+//  Reinstated here as a local helper; behaviour matches the original.
+static void BIOS_SetLPTPort(Bitu port, uint16_t baseaddr) {
+	switch (port) {
+	case 0:
+		mem_writew(BIOS_ADDRESS_LPT1, baseaddr);
+		mem_writeb(BIOS_LPT1_TIMEOUT, 10);
+		break;
+	case 1:
+		mem_writew(BIOS_ADDRESS_LPT2, baseaddr);
+		mem_writeb(BIOS_LPT2_TIMEOUT, 10);
+		break;
+	case 2:
+		mem_writew(BIOS_ADDRESS_LPT3, baseaddr);
+		mem_writeb(BIOS_LPT3_TIMEOUT, 10);
+		break;
+	}
+}
+//--End of additions
+
 
 bool device_LPT::Read(uint8_t * data,uint16_t * size) {
 	*size=0;
@@ -56,8 +79,7 @@ bool device_LPT::Seek(uint32_t * pos,uint32_t type) {
 	return true;
 }
 
-bool device_LPT::Close() {
-	return false;
+void device_LPT::Close() {
 }
 
 uint16_t device_LPT::GetInformation(void) {
@@ -189,7 +211,7 @@ CParallel::CParallel(CommandLine* cmd, Bitu portnr, uint8_t initirq) {
 	}
 
 	if(dbg_data||dbg_putchar||dbg_cregs||dbg_plainputchar||dbg_plaindr)
-		debugfp=OpenCaptureFile("parlog",".parlog.txt");
+		debugfp=fopen("parlog.parlog.txt","wb");
 	else debugfp=0;
 
 	if(debugfp == 0) {
@@ -238,6 +260,8 @@ uint8_t CParallel::getPrinterStatus()
 
 #include "callback.h"
 
+
+
 void RunIdleTime(Bitu milliseconds)
 {
 	Bitu time=GetTicks()+milliseconds;
@@ -258,11 +282,12 @@ void CParallel::initialize()
 
 
 
+
 CParallel* parallelPortObjects[3];
-class PARPORTS:public Module_base {
+class PARPORTS {
 public:
 	
-	PARPORTS (Section * configuration):Module_base (configuration) {
+	PARPORTS (Section * configuration) {
 
 #if C_PRINTER
 		bool printer_used = false;
@@ -270,7 +295,7 @@ public:
 
 		// default ports & interrupts
 		uint8_t defaultirq[] = { 7, 5, 12};
-		Section_prop *section = static_cast <Section_prop*>(configuration);
+		SectionProp *section = static_cast <SectionProp*>(configuration);
 		
 		char pname[]="parallelx";
         
@@ -297,7 +322,8 @@ public:
             //--End of modifications
                 
 			pname[8] = '1' + i;
-            CommandLine cmd(0,section->Get_string(pname));
+            const std::string cmdline_str = section->GetString(pname);
+			CommandLine cmd(0, cmdline_str.c_str());
 
 			std::string str;
 			cmd.FindCommand(1,str);
@@ -357,16 +383,14 @@ public:
 	}
 };
 
-static PARPORTS *testParallelPortsBaseclass;
+static std::unique_ptr<PARPORTS> parallel_ports = {};
 
-void PARALLEL_Destroy (Section * sec) {
-	delete testParallelPortsBaseclass;
-	testParallelPortsBaseclass = NULL;
+void PARALLEL_Destroy() {
+	parallel_ports = {};
 }
 
-void PARALLEL_Init (Section * sec) {
-	// should never happen
-	if (testParallelPortsBaseclass) delete testParallelPortsBaseclass;
-	testParallelPortsBaseclass = new PARPORTS (sec);
-	sec->AddDestroyFunction (&PARALLEL_Destroy, true);
+void PARALLEL_Init() {
+	auto section = get_section("parallel");
+	assert(section);
+	parallel_ports = std::make_unique<PARPORTS>(section);
 }
