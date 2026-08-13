@@ -103,3 +103,6 @@ __pycache__
 
 # Zed text editor
 .zed
+
+# Boxer NG: local build trees
+/build/

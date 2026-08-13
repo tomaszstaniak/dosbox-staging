@@ -583,6 +583,35 @@ target_link_libraries(dosbox PRIVATE
   SDL3::Headers
 )
 
+# --- Boxer NG: embedded static library -------------------------------------
+#
+# Boxer hosts the emulator inside its own process rather than running the
+# standalone executable. dosboxcommon alone is insufficient: the startup and
+# run-loop layer lives in src/main.cpp and src/dosbox.cpp, which CMake places
+# in the `dosbox` executable target.
+#
+# dosbox_embedded packages those two translation units together with
+# dosboxcommon, compiled with DOSBOX_EMBEDDED_BUILD so that main() is omitted
+# and DOSBOX_RunEmbedded() is exported in its place. See src/embedded.h.
+#
+# Consumers must link this target, not dosboxcommon directly, and must also
+# link dosboxcommon's transitive dependencies (CMake handles this
+# automatically for CMake consumers; Xcode consumers need the full .a list —
+# use `cmake --build . --target dosbox_embedded` then inspect the link line).
+option(OPT_EMBEDDED "Build the dosbox_embedded static library for host apps" ON)
+
+if (OPT_EMBEDDED)
+  add_library(dosbox_embedded STATIC src/main.cpp src/dosbox.cpp)
+  target_compile_definitions(dosbox_embedded PRIVATE DOSBOX_EMBEDDED_BUILD)
+  target_link_libraries(dosbox_embedded PUBLIC
+    dosboxcommon
+    SDL3::Headers
+  )
+  # Expose embedded.h to host applications.
+  target_include_directories(dosbox_embedded PUBLIC src)
+endif()
+# --- end Boxer NG ----------------------------------------------------------
+
 # Export dynamic symbols so loguru's stack traces can resolve names
 if (HAS_STACK_INCLUDES)
   target_link_options(dosbox PRIVATE "-rdynamic")

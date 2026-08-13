@@ -30,6 +30,7 @@
 #include "shell/shell.h"
 #include "utils/checks.h"
 #include "utils/env_utils.h"
+#include "embedded.h"
 
 CHECK_NARROWING();
 
@@ -577,11 +578,15 @@ static void wait_for_pid(const int wait_pid)
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
 
-int main(int argc, char* argv[])
+// Shared teardown, callable by both the standalone and embedded entry points.
+void DOSBOX_ShutdownEmbedded(void)
 {
-	// Ensure we perform SDL cleanup and restore console settings at exit
-	atexit(quit_func);
+	quit_func();
+}
 
+// main()'s body, minus process-ownership assumptions. See embedded.h.
+int DOSBOX_RunEmbedded(int argc, char* argv[])
+{
 	CommandLine command_line(argc, argv);
 	control = std::make_unique<Config>(&command_line);
 
@@ -730,3 +735,13 @@ int main(int argc, char* argv[])
 
 	return return_code;
 }
+
+#ifndef DOSBOX_EMBEDDED_BUILD
+int main(int argc, char* argv[])
+{
+	// Ensure we perform SDL cleanup and restore console settings at exit
+	atexit(quit_func);
+
+	return DOSBOX_RunEmbedded(argc, argv);
+}
+#endif // DOSBOX_EMBEDDED_BUILD
