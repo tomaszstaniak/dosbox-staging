@@ -584,6 +584,15 @@ void DOSBOX_ShutdownEmbedded(void)
 	quit_func();
 }
 
+static DOSBOX_ReadyCallback dosbox_ready_callback = nullptr;
+static void* dosbox_ready_context               = nullptr;
+
+void DOSBOX_SetReadyCallback(DOSBOX_ReadyCallback callback, void* context)
+{
+	dosbox_ready_callback = callback;
+	dosbox_ready_context  = context;
+}
+
 // main()'s body, minus process-ownership assumptions. See embedded.h.
 int DOSBOX_RunEmbedded(int argc, char* argv[])
 {
@@ -697,6 +706,11 @@ int DOSBOX_RunEmbedded(int argc, char* argv[])
 		GFX_InitSdl();
 		DOSBOX_InitModules();
 		GFX_InitAndStartGui();
+
+		// Notify an embedding host that the emulator is up. See embedded.h.
+		if (dosbox_ready_callback) {
+			dosbox_ready_callback(dosbox_ready_context);
+		}
 
 		// All subsystems' hotkeys need to be registered at this point
 		// to ensure their hotkeys appear in the graphical mapper.

@@ -36,6 +36,19 @@ extern "C" {
 // terminate the process.
 int DOSBOX_RunEmbedded(int argc, char* argv[]);
 
+// Optional callback invoked once the emulator is initialised and its GUI is
+// up — after GFX_InitAndStartGui(), immediately before SHELL_InitAndRun()
+// hands control to the shell.
+//
+// This exists because a host cannot otherwise tell when "started" means
+// "ready": DOSBOX_RunEmbedded() blocks until the emulator exits, so anything
+// the host signals before calling it is signalled too early. Set this before
+// calling DOSBOX_RunEmbedded(); pass NULL to clear.
+//
+// Called on the same thread as DOSBOX_RunEmbedded().
+typedef void (*DOSBOX_ReadyCallback)(void* context);
+void DOSBOX_SetReadyCallback(DOSBOX_ReadyCallback callback, void* context);
+
 // Releases graphics and console resources. Safe to call more than once, and
 // safe to call if DOSBOX_RunEmbedded() threw or was never invoked.
 void DOSBOX_ShutdownEmbedded(void);
