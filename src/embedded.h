@@ -3,12 +3,26 @@
 
 // Embedded entry point.
 //
-// Boxer runs the emulator inside its own process on a secondary thread rather
-// than as a standalone executable. main() is unsuitable for that: it installs
-// an atexit() handler and assumes it owns process teardown.
+// Boxer runs the emulator inside its own process rather than as a standalone
+// executable. main() is unsuitable for that: it installs an atexit() handler
+// and assumes it owns process teardown.
 //
-// DOSBOX_RunEmbedded() is main()'s body with those assumptions removed. The
-// host is responsible for calling DOSBOX_ShutdownEmbedded() afterwards.
+// DOSBOX_RunEmbedded() is main()'s body with those assumptions removed.
+//
+// Threading: run this on the host's existing emulator path. Boxer documents
+// that threads other than the main thread are unsupported (BXEmulator.h), and
+// SDL video on macOS is only safe on the main thread. Do not spawn a thread
+// for it.
+//
+// Teardown: DOSBOX_RunEmbedded() already calls GFX_Quit() before returning on
+// the success path. Do NOT also call DOSBOX_ShutdownEmbedded() after a normal
+// return — that would call GFX_Quit() twice.
+//
+// DOSBOX_ShutdownEmbedded() is currently only a GFX_Quit(); it does not
+// destroy modules or reset `control`, so the emulator cannot yet be restarted
+// in-process. Proper teardown (module destruction, control reset, RAII on the
+// error paths) is deliberately deferred until after the first successful
+// embedded launch.
 
 #ifndef DOSBOX_EMBEDDED_H
 #define DOSBOX_EMBEDDED_H
