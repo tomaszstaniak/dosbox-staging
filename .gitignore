@@ -106,3 +106,6 @@ __pycache__
 
 # Boxer NG: local build trees
 /build/
+
+# Local loguru checkout — not part of the fork
+/submodules/

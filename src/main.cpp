@@ -707,17 +707,25 @@ int DOSBOX_RunEmbedded(int argc, char* argv[])
 		DOSBOX_InitModules();
 		GFX_InitAndStartGui();
 
-		// Notify an embedding host that the emulator is up. See embedded.h.
-		if (dosbox_ready_callback) {
-			dosbox_ready_callback(dosbox_ready_context);
-		}
-
 		// All subsystems' hotkeys need to be registered at this point
 		// to ensure their hotkeys appear in the graphical mapper.
 		MAPPER_BindKeys(get_sdl_section());
 
 		if (arguments->startmapper) {
 			MAPPER_DisplayUI();
+		}
+
+		// Notify an embedding host that the emulator is fully up, immediately
+		// before the shell takes over. Cleared before invocation so a stale
+		// host pointer can never be called twice. See embedded.h.
+		if (dosbox_ready_callback) {
+			const auto callback = dosbox_ready_callback;
+			const auto context  = dosbox_ready_context;
+
+			dosbox_ready_callback = nullptr;
+			dosbox_ready_context  = nullptr;
+
+			callback(context);
 		}
 
 		// Start emulation
