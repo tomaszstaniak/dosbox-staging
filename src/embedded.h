@@ -53,8 +53,24 @@ int DOSBOX_RunEmbedded(int argc, char* argv[]);
 typedef void (*DOSBOX_ReadyCallback)(void* context);
 void DOSBOX_SetReadyCallback(DOSBOX_ReadyCallback callback, void* context);
 
-// Releases graphics and console resources. Safe to call more than once, and
-// safe to call if DOSBOX_RunEmbedded() threw or was never invoked.
+// Asks the running emulator to exit. Safe to call from the host's AppKit
+// termination handler, including re-entrantly from inside DOSBOX_RunEmbedded()
+// (SDL pumps the host run loop, so a Cmd-Q arrives while RunEmbedded is still
+// on the stack).
+//
+// This only *requests* exit: DOSBOX_RunEmbedded() unwinds and returns normally
+// afterwards. The host must let that return happen before terminating the
+// process -- terminating while the emulator and its audio threads are live is
+// what produces the crash reports.
+void DOSBOX_RequestExitEmbedded(void);
+
+// Releases graphics and console resources.
+//
+// Do NOT call this after a normal DOSBOX_RunEmbedded() return: that path
+// already calls GFX_Quit(). It exists for hosts that need to clean up after
+// DOSBOX_RunEmbedded() was never invoked, or threw before its own teardown.
+// It does not destroy modules or reset `control`, so the emulator cannot yet
+// be restarted in-process.
 void DOSBOX_ShutdownEmbedded(void);
 
 #ifdef __cplusplus

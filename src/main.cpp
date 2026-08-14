@@ -584,6 +584,11 @@ void DOSBOX_ShutdownEmbedded(void)
 	quit_func();
 }
 
+void DOSBOX_RequestExitEmbedded(void)
+{
+	GFX_RequestExit(true);
+}
+
 static DOSBOX_ReadyCallback dosbox_ready_callback = nullptr;
 static void* dosbox_ready_context               = nullptr;
 
