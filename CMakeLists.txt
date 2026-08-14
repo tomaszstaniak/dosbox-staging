@@ -601,7 +601,18 @@ target_link_libraries(dosbox PRIVATE
 option(OPT_EMBEDDED "Build the dosbox_embedded static library for host apps" ON)
 
 if (OPT_EMBEDDED)
-  add_library(dosbox_embedded STATIC src/main.cpp src/dosbox.cpp)
+  # Several subdirectory CMakeLists add sources directly to the `dosbox`
+  # executable rather than to dosboxcommon, so they are absent from the
+  # library and must be listed here too. Keep this in sync with:
+  #   grep -rn "target_sources(dosbox " --include=CMakeLists.txt .
+  add_library(dosbox_embedded STATIC
+    src/main.cpp
+    src/dosbox.cpp
+    src/misc/messages.cpp          # MSG_Exists, MSG_Add
+    src/hardware/port_containers.cpp
+    src/dos/dos_files.cpp          # Drives, Files, DOS_Rename
+    src/shell/shell_cmds.cpp
+  )
   target_compile_definitions(dosbox_embedded PRIVATE DOSBOX_EMBEDDED_BUILD)
   target_link_libraries(dosbox_embedded PUBLIC
     dosboxcommon
