@@ -867,6 +867,34 @@ void AUTOEXEC_RefreshFile()
 	}
 }
 
+bool AUTOEXEC_AppendHostLines(const std::vector<std::string>& lines)
+{
+	// Too early: the module has not collected the config data yet, so the
+	// lines would be lost when the file is first generated.
+	if (!autoexec_module) {
+		return false;
+	}
+	// Too late: COMMAND.COM may be executing the file. Changing its length
+	// now would shift the offsets it reads from (see create_autoexec_bat_utf8).
+	if (DOS_GetFirstShell()) {
+		return false;
+	}
+	if (lines.empty()) {
+		return true;
+	}
+	for (const auto& line : lines) {
+		autoexec_lines[Placement::CommandsAfterAutoexecSection].push_back(line);
+	}
+	// Regenerate everything: AUTOEXEC_RefreshFile() keeps the UTF-8 text once
+	// created and only re-encodes the bytes when the code page changes, so
+	// both caches must be dropped for the new lines (and any variables
+	// recorded since the first generation) to reach Z:\AUTOEXEC.BAT.
+	autoexec_bat_utf8.reset();
+	vfile_code_page.reset();
+	AUTOEXEC_RefreshFile();
+	return true;
+}
+
 void AUTOEXEC_Init()
 {
 	auto section = get_autoexec_section("autoexec");

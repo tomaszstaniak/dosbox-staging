@@ -64,6 +64,20 @@ void DOSBOX_SetReadyCallback(DOSBOX_ReadyCallback callback, void* context);
 // what produces the crash reports.
 void DOSBOX_RequestExitEmbedded(void);
 
+// Appends host-supplied lines to the end of the generated Z:\AUTOEXEC.BAT and
+// regenerates it, together with any environment variables recorded through
+// AUTOEXEC_SetVariable() since start-up. This is how a host that mounted its
+// own drives in the ready callback can then launch a program on them: the
+// host derives the DOS path from the live drive and hands over e.g.
+// "C:", "CD \GAME", "GAME.EXE".
+//
+// Only valid from the ready callback, i.e. after modules are initialised and
+// before the shell exists. Lines are executed even under --noautoexec, which
+// only suppresses the [autoexec] sections of configuration files. Returns
+// false, changing nothing, if called too early or once the shell is running.
+// Call it on the DOSBOX_RunEmbedded() thread.
+bool DOSBOX_AppendAutoexecLines(const char* const* lines, int count);
+
 // Releases graphics and console resources.
 //
 // Do NOT call this after a normal DOSBOX_RunEmbedded() return: that path

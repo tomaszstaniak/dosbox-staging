@@ -31,6 +31,7 @@
 #include "utils/checks.h"
 #include "utils/env_utils.h"
 #include "embedded.h"
+#include "shell/autoexec.h"
 
 CHECK_NARROWING();
 
@@ -582,6 +583,17 @@ static void wait_for_pid(const int wait_pid)
 void DOSBOX_ShutdownEmbedded(void)
 {
 	quit_func();
+}
+
+bool DOSBOX_AppendAutoexecLines(const char* const* lines, int count)
+{
+	std::vector<std::string> host_lines = {};
+	for (int i = 0; i < count; ++i) {
+		if (lines[i]) {
+			host_lines.emplace_back(lines[i]);
+		}
+	}
+	return AUTOEXEC_AppendHostLines(host_lines);
 }
 
 void DOSBOX_RequestExitEmbedded(void)
