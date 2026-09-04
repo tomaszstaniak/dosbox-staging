@@ -71,6 +71,9 @@ void DOSBOX_RequestExitEmbedded(void);
 // host derives the DOS path from the live drive and hands over e.g.
 // "C:", "CD \GAME", "GAME.EXE".
 //
+// Passing zero lines is valid and still regenerates the file, so variables set
+// while mounting reach DOS.
+//
 // Only valid from the ready callback, i.e. after modules are initialised and
 // before the shell exists. Lines are executed even under --noautoexec, which
 // only suppresses the [autoexec] sections of configuration files. Returns
