@@ -22,7 +22,8 @@ void AUTOEXEC_SetVariable(const std::string& name, const std::string& value);
 // Appends lines supplied by an embedding host to the end of AUTOEXEC.BAT
 // (after the [autoexec] section content, before any '@EXIT') and regenerates
 // the virtual file, including any variables recorded with
-// AUTOEXEC_SetVariable() since the file was first generated.
+// AUTOEXEC_SetVariable() since the file was first generated. An empty list
+// regenerates the file without adding lines.
 //
 // Only valid after AUTOEXEC_Init() and before the first shell exists: once
 // COMMAND.COM is executing the file its offsets must not change. Returns

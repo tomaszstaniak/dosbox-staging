@@ -879,9 +879,9 @@ bool AUTOEXEC_AppendHostLines(const std::vector<std::string>& lines)
 	if (DOS_GetFirstShell()) {
 		return false;
 	}
-	if (lines.empty()) {
-		return true;
-	}
+	// An empty list is a valid request: the host may only want the file
+	// regenerated so that variables recorded since the first generation
+	// (e.g. while mounting drives) reach the DOS environment.
 	for (const auto& line : lines) {
 		autoexec_lines[Placement::CommandsAfterAutoexecSection].push_back(line);
 	}
