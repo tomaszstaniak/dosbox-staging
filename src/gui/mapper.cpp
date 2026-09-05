@@ -2644,17 +2644,20 @@ static bool load_binds_from_file(const std::string_view mapperfile_path,
 
 void MAPPER_CheckEvent(SDL_Event *event)
 {
-	// With the host render backend the SDL window is hidden and can never
-	// hold keyboard focus, so no keyboard event should ever get here; the
-	// host is the single keyboard provider. Say so loudly if one does.
+	// Host render backend: the host application is the only keyboard
+	// source. A hidden window never holds keyboard focus, yet on macOS SDL
+	// captures key events at the NSApplication level and delivers them
+	// anyway (observed 2026-09-05), so they are dropped here rather than
+	// injected a second time.
 	if ((event->type == SDL_EVENT_KEY_DOWN || event->type == SDL_EVENT_KEY_UP) &&
 	    GFX_GetRenderBackendType() == RenderBackendType::Host) {
-		static bool warned = false;
-		if (!warned) {
-			warned = true;
-			LOG_WARNING("MAPPER: A keyboard event reached the mapper in 'host' output mode; "
-			            "the host application should be the only keyboard source");
+		static bool logged = false;
+		if (!logged) {
+			logged = true;
+			LOG_MSG("MAPPER: Ignoring SDL keyboard events in 'host' output mode; "
+			        "the host application provides the keyboard");
 		}
+		return;
 	}
 
 	switch (event->type) {

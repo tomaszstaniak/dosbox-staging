@@ -2578,10 +2578,23 @@ bool GFX_PollAndHandleEvents()
 			notify_new_mouse_screen_params();
 			break;
 
-		case SDL_EVENT_MOUSE_MOTION: handle_mouse_motion(&event.motion); break;
-		case SDL_EVENT_MOUSE_WHEEL: handle_mouse_wheel(&event.wheel); break;
+		case SDL_EVENT_MOUSE_MOTION:
+			// Host render backend: the host provides the mouse too (or not
+			// yet); SDL's own mouse events for the hidden window are dropped.
+			if (sdl.render_backend_type != RenderBackendType::Host) {
+				handle_mouse_motion(&event.motion);
+			}
+			break;
+		case SDL_EVENT_MOUSE_WHEEL:
+			if (sdl.render_backend_type != RenderBackendType::Host) {
+				handle_mouse_wheel(&event.wheel);
+			}
+			break;
 		case SDL_EVENT_MOUSE_BUTTON_DOWN:
 		case SDL_EVENT_MOUSE_BUTTON_UP:
+			if (sdl.render_backend_type == RenderBackendType::Host) {
+				break;
+			}
 			handle_mouse_button(&event.button);
 			break;
 
