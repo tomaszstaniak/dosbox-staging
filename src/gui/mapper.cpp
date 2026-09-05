@@ -2644,6 +2644,19 @@ static bool load_binds_from_file(const std::string_view mapperfile_path,
 
 void MAPPER_CheckEvent(SDL_Event *event)
 {
+	// With the host render backend the SDL window is hidden and can never
+	// hold keyboard focus, so no keyboard event should ever get here; the
+	// host is the single keyboard provider. Say so loudly if one does.
+	if ((event->type == SDL_EVENT_KEY_DOWN || event->type == SDL_EVENT_KEY_UP) &&
+	    GFX_GetRenderBackendType() == RenderBackendType::Host) {
+		static bool warned = false;
+		if (!warned) {
+			warned = true;
+			LOG_WARNING("MAPPER: A keyboard event reached the mapper in 'host' output mode; "
+			            "the host application should be the only keyboard source");
+		}
+	}
+
 	switch (event->type) {
 	case SDL_EVENT_GAMEPAD_ADDED:
 	case SDL_EVENT_GAMEPAD_REMOVED:
