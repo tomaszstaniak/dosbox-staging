@@ -27,6 +27,8 @@
 #ifndef DOSBOX_EMBEDDED_H
 #define DOSBOX_EMBEDDED_H
 
+#include <stdint.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -80,6 +82,44 @@ void DOSBOX_RequestExitEmbedded(void);
 // false, changing nothing, if called too early or once the shell is running.
 // Call it on the DOSBOX_RunEmbedded() thread.
 bool DOSBOX_AppendAutoexecLines(const char* const* lines, int count);
+
+// Host-drawn video. When registered and [sdl] output = host, the core creates
+// a hidden SDL window and hands every finished frame to the host instead of
+// presenting it. All callbacks run on the DOSBOX_RunEmbedded() thread.
+//
+//  render_size_changed  the DOS framebuffer size (after scaler doubling)
+//                       changed; called at least once before the first upload
+//  video_mode_changed   the DOS video mode changed (text/graphics, nominal
+//                       size, pixel aspect ratio numerator/denominator)
+//  upload               a complete frame: 32-bit BGRX in memory order (B, G,
+//                       R, X), 'pitch_bytes' per row. The pointer is valid
+//                       only for the duration of the call.
+//  present              a good moment to display the last uploaded frame
+//  canvas_size          the host's drawing area in pixels; must be positive
+//
+// The struct is copied at registration; 'context' must stay valid until
+// DOSBOX_RunEmbedded() returns (callbacks can still arrive while it shuts the
+// GUI down). The registration is cleared when DOSBOX_RunEmbedded() returns.
+// If any callback is NULL, or 'host' is selected without a registration, the
+// core logs a warning and falls back to the 'texture' backend.
+typedef struct DOSBOX_HostVideo {
+	void* context;
+	void (*render_size_changed)(void* context, int width_px, int height_px);
+	void (*video_mode_changed)(void* context, int is_text_mode, int width,
+	                           int height, int par_num, int par_den);
+	void (*upload)(void* context, const uint32_t* bgrx, int pitch_bytes,
+	               int width_px, int height_px);
+	void (*present)(void* context);
+	void (*canvas_size)(void* context, int* width_px, int* height_px);
+} DOSBOX_HostVideo;
+
+// Register (copy) or clear (NULL) the host video callbacks. Call before
+// DOSBOX_RunEmbedded().
+void DOSBOX_SetHostVideo(const DOSBOX_HostVideo* host);
+
+// The registered callbacks, or NULL. Used by the GUI layer; also usable by
+// hosts to check their registration.
+const DOSBOX_HostVideo* DOSBOX_GetHostVideo(void);
 
 // Releases graphics and console resources.
 //

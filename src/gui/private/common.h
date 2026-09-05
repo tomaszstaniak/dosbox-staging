@@ -67,7 +67,10 @@ enum class PresentationMode {
 	HostRate
 };
 
-enum class RenderBackendType { OpenGl, Sdl };
+// Host: an embedding application receives the frames (see embedded.h,
+// DOSBOX_HostVideo) and draws them itself; the SDL window is created hidden
+// only to satisfy the rest of the GUI layer.
+enum class RenderBackendType { OpenGl, Sdl, Host };
 
 RenderBackendType GFX_GetRenderBackendType();
 

@@ -601,6 +601,25 @@ void DOSBOX_RequestExitEmbedded(void)
 	GFX_RequestExit(true);
 }
 
+static DOSBOX_HostVideo dosbox_host_video     = {};
+static bool dosbox_host_video_set             = false;
+
+void DOSBOX_SetHostVideo(const DOSBOX_HostVideo* host)
+{
+	if (host) {
+		dosbox_host_video     = *host;
+		dosbox_host_video_set = true;
+	} else {
+		dosbox_host_video     = {};
+		dosbox_host_video_set = false;
+	}
+}
+
+const DOSBOX_HostVideo* DOSBOX_GetHostVideo(void)
+{
+	return dosbox_host_video_set ? &dosbox_host_video : nullptr;
+}
+
 static DOSBOX_ReadyCallback dosbox_ready_callback = nullptr;
 static void* dosbox_ready_context               = nullptr;
 
@@ -771,6 +790,11 @@ int DOSBOX_RunEmbedded(int argc, char* argv[])
 	// exit; this works around problems when 'atexit()' order clashes with SDL
 	// 2 cleanup order. Happens with SDL_VIDEODRIVER=wayland as of SDL 2.0.12.
 	GFX_Quit();
+
+	// The host's callbacks and context are only guaranteed valid until we
+	// return; drop them so nothing can call into a dead host later.
+	DOSBOX_SetHostVideo(nullptr);
+
 
 	return return_code;
 }

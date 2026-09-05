@@ -3039,6 +3039,14 @@ SDL_Surface *SDL_CreateRGBSurfaceFrom(void *pixels, int width, int height, int d
 }
 
 void MAPPER_DisplayUI() {
+	// The mapper draws into the main SDL window; with the host render
+	// backend that window is hidden and has no renderer or GL context to
+	// borrow, which would E_Exit below.
+	if (GFX_GetRenderBackendType() == RenderBackendType::Host) {
+		LOG_WARNING("MAPPER: The keymapper UI is not available in 'host' output mode");
+		return;
+	}
+
 	MOUSE_NotifyTakeOver(true);
 
 	// The mapper is about to take-over SDL's surface and rendering

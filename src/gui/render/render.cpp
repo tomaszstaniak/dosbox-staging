@@ -700,6 +700,11 @@ void RENDER_SetScanAndPixelDoubling()
 		force_no_pixel_doubling = shader_preset.settings.force_no_pixel_doubling;
 	} break;
 
+	case RenderBackendType::Host:
+		// The host scales; hand it the double-scanned, pixel-doubled image
+		// like the OpenGL path does by default.
+		break;
+
 	default: assertm(false, "Invalid RenderindBackend value");
 	}
 

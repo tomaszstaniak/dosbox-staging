@@ -26,6 +26,8 @@
 #include "cpu/cpu.h"
 #include "dosbox.h"
 #include "gui/mapper.h"
+#include "embedded.h"
+#include "gui/render/host_renderer.h"
 #include "gui/render/opengl_renderer.h"
 #include "gui/render/sdl_renderer.h"
 #include "gui/titlebar.h"
@@ -254,6 +256,15 @@ static void configure_renderer()
 	} else if (output == "opengl") {
 		sdl.render_backend_type = RenderBackendType::OpenGl;
 #endif
+
+	} else if (output == "host") {
+		if (DOSBOX_GetHostVideo()) {
+			sdl.render_backend_type = RenderBackendType::Host;
+		} else {
+			LOG_WARNING("SDL: 'host' output selected but no host video is registered, "
+			            "using 'texture' output mode");
+			sdl.render_backend_type = RenderBackendType::Sdl;
+		}
 
 	} else {
 		// TODO convert to notification
@@ -972,6 +983,11 @@ void GFX_CenterMouse()
 	assert(sdl.renderer);
 	assert(sdl.window);
 
+	// Host backend: the window is hidden; warping into it is meaningless.
+	if (sdl.render_backend_type == RenderBackendType::Host) {
+		return;
+	}
+
 	int width  = 0;
 	int height = 0;
 
@@ -988,6 +1004,12 @@ void GFX_SetMouseRawInput([[maybe_unused]] const bool requested_raw_input)
 
 void GFX_SetMouseCapture(const bool requested_capture)
 {
+	// Host backend: relative mode on a hidden window fails and would E_Exit
+	// below. Mouse capture is the host's business.
+	if (sdl.render_backend_type == RenderBackendType::Host) {
+		return;
+	}
+
 	if (!SDL_SetWindowRelativeMouseMode(sdl.window, requested_capture)) {
 		SDL_ShowCursor();
 
@@ -1035,6 +1057,12 @@ static void focus_input()
 static void toggle_fullscreen()
 {
 	assert(sdl.renderer);
+
+	// Host backend: there is no visible SDL window to make fullscreen.
+	if (sdl.render_backend_type == RenderBackendType::Host) {
+		LOG_MSG("SDL: Fullscreen is the host application's business in 'host' output mode");
+		return;
+	}
 
 	// Record the window's current canvas size if we're departing window-mode
 	if (!sdl.is_fullscreen) {
@@ -1586,6 +1614,31 @@ static RenderBackend* create_renderer()
 	}
 #endif
 
+	if (sdl.render_backend_type == RenderBackendType::Host) {
+		const auto host = DOSBOX_GetHostVideo();
+		const bool complete = host && host->render_size_changed &&
+		                      host->video_mode_changed && host->upload &&
+		                      host->present && host->canvas_size;
+		if (complete) {
+			try {
+				return new HostRenderer(sdl.windowed.x_pos,
+				                        sdl.windowed.y_pos,
+				                        sdl.windowed.width,
+				                        sdl.windowed.height,
+				                        get_sdl_window_flags(),
+				                        *host);
+			} catch (const std::runtime_error& ex) {
+				LOG_WARNING("HOST: Error initialising host renderer, "
+				            "falling back to SDL renderer");
+			}
+		} else {
+			LOG_WARNING("HOST: Host video registration is missing or incomplete, "
+			            "falling back to SDL renderer");
+		}
+		sdl.render_backend_type = RenderBackendType::Sdl;
+		set_section_property_value("sdl", "output", "texture");
+	}
+
 	if (sdl.render_backend_type == RenderBackendType::Sdl) {
 		try {
 			std::string render_driver = get_sdl_section()->GetString(
@@ -1612,6 +1665,11 @@ static RenderBackend* create_renderer()
 static void set_keyboard_capture()
 {
 	assert(sdl.window);
+
+	// Host backend: never grab the host's keyboard for a hidden window.
+	if (sdl.render_backend_type == RenderBackendType::Host) {
+		return;
+	}
 
 	const auto capture_keyboard = get_sdl_section()->GetBool("keyboard_capture");
 
@@ -1935,7 +1993,9 @@ void GFX_InitAndStartGui()
 	// - https://github.com/libsdl-org/SDL/issues/14701
 	// - https://github.com/libsdl-org/SDL/issues/13920
 	//
-	SDL_RaiseWindow(sdl.window);
+	if (sdl.render_backend_type != RenderBackendType::Host) {
+		SDL_RaiseWindow(sdl.window);
+	}
 
 	// Setting the SDL_WINDOW_BORDERLESS flag on window creation doesn't
 	// work on macOS.
@@ -2598,12 +2658,16 @@ static void init_sdl_config_settings(SectionProp& section)
 #endif
 	pstring->SetDeprecatedWithAlternateValue("texturepp", "texture");
 
+	pstring->SetOptionHelp("host",
+	                       "  host:       Hand frames to the embedding application, which draws\n"
+	                       "              them itself (only when a host video is registered).");
 	pstring->SetValues({
 #if C_OPENGL
 	        "opengl",
 #endif
 	        "texture",
 	        "texturenb",
+	        "host",
 	});
 	pstring->SetEnabledOptions({
 #if C_OPENGL
