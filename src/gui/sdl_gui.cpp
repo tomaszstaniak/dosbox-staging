@@ -1619,11 +1619,18 @@ static RenderBackend* create_renderer()
 		const bool complete = host && host->render_size_changed &&
 		                      host->video_mode_changed && host->upload &&
 		                      host->present && host->canvas_size;
-		if (!complete) {
-			LOG_WARNING("HOST: Host video registration is missing or incomplete, "
+		if (!host) {
+			// No host contract at all: the SDL renderer and SDL input are
+			// a consistent pair, so falling back is safe.
+			LOG_WARNING("HOST: 'host' output selected but no host video is registered, "
 			            "falling back to SDL renderer");
 			sdl.render_backend_type = RenderBackendType::Sdl;
 			set_section_property_value("sdl", "output", "texture");
+		} else if (!complete) {
+			// A host registered but left a callback out: it will still
+			// provide input, so falling back would double the keyboard.
+			E_Exit("HOST: The embedding application's video registration is "
+			       "incomplete (a callback is NULL)");
 		} else {
 			try {
 				return new HostRenderer(sdl.windowed.x_pos,
