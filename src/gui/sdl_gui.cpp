@@ -1619,7 +1619,12 @@ static RenderBackend* create_renderer()
 		const bool complete = host && host->render_size_changed &&
 		                      host->video_mode_changed && host->upload &&
 		                      host->present && host->canvas_size;
-		if (complete) {
+		if (!complete) {
+			LOG_WARNING("HOST: Host video registration is missing or incomplete, "
+			            "falling back to SDL renderer");
+			sdl.render_backend_type = RenderBackendType::Sdl;
+			set_section_property_value("sdl", "output", "texture");
+		} else {
 			try {
 				return new HostRenderer(sdl.windowed.x_pos,
 				                        sdl.windowed.y_pos,
@@ -1628,15 +1633,14 @@ static RenderBackend* create_renderer()
 				                        get_sdl_window_flags(),
 				                        *host);
 			} catch (const std::runtime_error& ex) {
-				LOG_WARNING("HOST: Error initialising host renderer, "
-				            "falling back to SDL renderer");
+				// No silent fallback: a host that registered video also
+				// owns the keyboard and mouse. Switching to the SDL
+				// renderer here would re-arm SDL's input paths next to
+				// the host's, so fail visibly and let the host decide.
+				E_Exit("HOST: Could not initialise the host render backend "
+				       "the embedding application requires: %s", ex.what());
 			}
-		} else {
-			LOG_WARNING("HOST: Host video registration is missing or incomplete, "
-			            "falling back to SDL renderer");
 		}
-		sdl.render_backend_type = RenderBackendType::Sdl;
-		set_section_property_value("sdl", "output", "texture");
 	}
 
 	if (sdl.render_backend_type == RenderBackendType::Sdl) {
