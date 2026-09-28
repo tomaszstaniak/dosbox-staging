@@ -549,6 +549,14 @@ static void setup_presentation_mode()
 
 static void notify_new_mouse_screen_params()
 {
+	// Host render backend: the host draws the picture in its own view and
+	// is the only one who knows where it is, so it supplies the screen
+	// parameters itself (MOUSE_NewScreenParams). Sending ours as well would
+	// overwrite the host's rectangle on every mode change.
+	if (sdl.render_backend_type == RenderBackendType::Host) {
+		return;
+	}
+
 	if (sdl.draw.draw_rect_px.w <= 0 || sdl.draw.draw_rect_px.h <= 0) {
 		// Filter out unusual parameters, which can be the result
 		// of window minimized due to ALT+TAB, for example
@@ -1021,6 +1029,12 @@ void GFX_SetMouseCapture(const bool requested_capture)
 
 void GFX_SetMouseVisibility(const bool requested_visible)
 {
+	// Host render backend: SDL_HideCursor() hides the pointer for the whole
+	// application, not for the hidden window. The host owns its cursor.
+	if (sdl.render_backend_type == RenderBackendType::Host) {
+		return;
+	}
+
 	if (requested_visible) {
 		if (!SDL_ShowCursor()) {
 			LOG_WARNING("SDL: Error making mouse cursor visible");
