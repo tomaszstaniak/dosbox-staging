@@ -520,6 +520,11 @@ bool MIXER_FastForwardModeEnabled();
 const AudioFrame MIXER_GetMasterVolume();
 void MIXER_SetMasterVolume(const AudioFrame gain);
 
+// Linear multiplier applied after the master gain, for an embedding host's
+// volume slider and mute (1.0 = unchanged, 0.0 = silent). Atomic; the
+// mixer thread picks it up on its next block.
+void MIXER_SetHostGain(const float gain);
+
 // Mute FSM. See the comment on `MixerMuteState` above for the state graph
 // and the rationale for orthogonal pause / mute states.
 MixerMuteState MIXER_GetMuteState();

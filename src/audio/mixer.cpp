@@ -168,6 +168,11 @@ struct MixerSettings {
 	// for clipping.
 	std::atomic<AudioFrame> master_gain = AudioFrame(Minus6db, Minus6db);
 
+	// Multiplier owned by the embedding host (its volume slider and mute),
+	// applied on top of the master gain so a DOS `MIXER MASTER` command
+	// keeps its meaning but cannot bypass the host's setting.
+	std::atomic<float> host_gain = 1.0f;
+
 	// Output by mix_samples, to be enqueud into the final_output queue
 	std::vector<AudioFrame> output_buffer = {};
 
@@ -878,6 +883,11 @@ const AudioFrame MIXER_GetMasterVolume()
 void MIXER_SetMasterVolume(const AudioFrame gain)
 {
 	mixer.master_gain.store(gain, std::memory_order_relaxed);
+}
+
+void MIXER_SetHostGain(const float gain)
+{
+	mixer.host_gain.store(gain, std::memory_order_relaxed);
 }
 
 void MixerChannel::SetChannelMap(const StereoLine map)
@@ -2512,8 +2522,9 @@ static void mix_samples(const int frames_requested)
 		frame = {hpf[0].filter(frame.left), hpf[1].filter(frame.right)};
 	}
 
-	// Apply master gain
-	const auto gain = mixer.master_gain.load(std::memory_order_relaxed);
+	// Apply master gain, scaled by the host's own volume
+	const auto gain = mixer.master_gain.load(std::memory_order_relaxed) *
+	                  mixer.host_gain.load(std::memory_order_relaxed);
 	for (auto& frame : mixer.output_buffer) {
 		frame *= gain;
 	}
